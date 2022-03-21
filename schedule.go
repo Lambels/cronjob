@@ -2,29 +2,81 @@ package cronjob
 
 import "time"
 
+// At returns a schedule that runs at: at (field).
+func At(at time.Time) Schedule {
+	return &constantSchedule{
+		at: at,
+	}
+}
+
+// In returns a schedule that runs from now (field) in offset (field).
+func In(now time.Time, offset time.Duration) Schedule {
+	return &constantSchedule{
+		at: now.Add(offset),
+	}
+}
+
+// Every runs from now: now (field) in constant increments of every (field).
+func Every(now time.Time, every time.Duration) Schedule {
+	schedule := &cyclicSchedule{
+		every: every,
+	}
+	schedule.Calculate(now)
+
+	return schedule
+}
+
+// EveryFixed finds the next time interval: every (field) and runs it at that time.
+//
+// example:
+//	cronjob.EveryFixed(time.Now(), 3 * time.Hour)
+// the schedule will find the next 3 hour interval to run at.
+//
+// possible 3 hour intervals: 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00, 24:00
+func EveryFixed(now time.Time, every time.Duration) Schedule {
+	schedule := &fixedCyclicSchedule{
+		every: every,
+	}
+	schedule.Calculate(now)
+
+	return schedule
+}
+
 // ConstantSchedule ------------------------------------------------------------------
 
-type ConstantSchedule struct {
+type constantSchedule struct {
 	// is the date on which the job is scheduled to run on.
 	at time.Time
 }
 
 // Calculate calculates the duration of time in which the schedule will be active
 // in reference to now parameter.
-func (s *ConstantSchedule) Calculate(now time.Time) time.Duration {
+func (s *constantSchedule) Calculate(now time.Time) time.Duration {
 	return s.at.Sub(now)
 }
 
 // FixedCyclicSchedule ------------------------------------------------------------------
 
-type FixedCyclicSchedule struct {
+type fixedCyclicSchedule struct {
 	every time.Duration
+
+	nextActivation time.Time
 }
 
-func (s *FixedCyclicSchedule) Calculate(now time.Time) time.Duration {
-	switch h, m, s := breakTime(int(s.every.Minutes())); {
+func (s *fixedCyclicSchedule) Calculate(now time.Time) time.Duration {
+	// next activation isnt calculated, calculate it.
+	// or if next activation is outdated, calculate it.
+	if s.nextActivation.IsZero() || s.nextActivation.Before(now) {
+		s.nextActivation = s.calculateNextInterval(now)
+	}
+
+	return s.nextActivation.Sub(now)
+}
+
+func (s *fixedCyclicSchedule) calculateNextInterval(now time.Time) time.Time {
+	switch h, m, s := breakTime(int(s.every.Seconds())); {
 	case h > 0:
-		nextTime := time.Date(
+		return time.Date(
 			now.Year(),
 			now.Month(),
 			now.Day(),
@@ -35,14 +87,11 @@ func (s *FixedCyclicSchedule) Calculate(now time.Time) time.Duration {
 			now.Location(),
 		)
 
-		return nextTime.Sub(now)
-
 	case m > 0:
-		return 0
+		return time.Time{}
 
 	default:
-		return 0
-
+		return time.Time{}
 	}
 }
 
@@ -59,7 +108,7 @@ func breakTime(secs int) (hour, minute, second int) {
 
 // CyclicSchedule ------------------------------------------------------------------
 
-type CyclicSchedule struct {
+type cyclicSchedule struct {
 	// every gets added to the current time to get the next activation cycle.
 	every time.Duration
 
@@ -67,14 +116,10 @@ type CyclicSchedule struct {
 	nextActivation time.Time
 }
 
-func (s *CyclicSchedule) Calculate(now time.Time) time.Duration {
+func (s *cyclicSchedule) Calculate(now time.Time) time.Duration {
 	// next activation isnt calculated, calculate it.
-	if s.nextActivation.IsZero() {
-		s.nextActivation = now.Add(s.every)
-	}
-
-	// next activation is outdated, calculate it.
-	if s.nextActivation.Before(now) {
+	// or if next activation is outdated, calculate it.
+	if s.nextActivation.IsZero() || s.nextActivation.Before(now) {
 		s.nextActivation = now.Add(s.every)
 	}
 
