@@ -64,22 +64,24 @@ func New(confs ...CronJobConf) *CronJob {
 	return cronJob
 }
 
+// Now returns the current time in the location used by the instance.
 func (c *CronJob) Now() time.Time {
 	return time.Now().In(c.location)
 }
 
-func (c *CronJob) AddFunc(at time.Time, cmd FuncJob, confs ...JobConf) int {
-	return c.addJob(&Job{job: cmd}, &ConstantSchedule{at}, confs...)
+// AddFunc adds the function: cmd (field) to the execution cycle.
+//
+// can be called after starting the execution cycle or before.
+//
+//	(*CronJob).AddFunc(foo, cronjob.In(time.Now(), 4 * time.Hour))
+// will schedule foo to run in 4 hours from time.Now()
+func (c *CronJob) AddFunc(cmd FuncJob, schedule Schedule, confs ...JobConf) int {
+	return c.addJob(&Job{job: cmd}, schedule, confs...)
 }
 
-func (c *CronJob) AddCyclicFunc(every time.Duration, cmd FuncJob, confs ...JobConf) int {
-	return c.addJob(&Job{job: cmd}, &CyclicSchedule{every: every}, confs...)
-}
-
-func (c *CronJob) AddFixedCyclicFunc(every time.Duration, cmd FuncJob, confs ...JobConf) int {
-	return c.addJob(&Job{job: cmd}, &FixedCyclicSchedule{every}, confs...)
-}
-
+// RemoveJob removes the job with id: id (field). (no-op if job not found)
+//
+// can be called after starting the execution cycle or before.
 func (c *CronJob) RemoveJob(id int) {
 	c.runningMu.Lock()
 	defer c.runningMu.Unlock()
@@ -91,6 +93,7 @@ func (c *CronJob) RemoveJob(id int) {
 	}
 }
 
+// Location returns the location used by the instance.
 func (c *CronJob) Location() *time.Location {
 	return c.location
 }
@@ -107,7 +110,7 @@ func (c *CronJob) addJob(job *Job, schedule Schedule, confs ...JobConf) int {
 	// add a job which will be ran on the first execution cycle (negative time.Duration).
 	if job.runOnStart {
 		node := &Node{
-			Schedule: &ConstantSchedule{time.Time{}},
+			Schedule: &constantSchedule{time.Time{}},
 			Job:      job,
 		}
 
@@ -131,6 +134,7 @@ func (c *CronJob) addJob(job *Job, schedule Schedule, confs ...JobConf) int {
 	return node.Id
 }
 
+// Run runs the function provided to job with the chains.
 func (j *Job) Run() {
 	j.chain.Run(j.job)
 }
