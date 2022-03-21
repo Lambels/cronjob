@@ -10,6 +10,7 @@ import (
 type CronJob struct {
 	scheduler Scheduler
 	logger    *log.Logger
+	verbose   bool
 	idCount   int
 	location  *time.Location
 	add       chan *Node

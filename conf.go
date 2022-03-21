@@ -10,6 +10,12 @@ func WithLogger(logger *log.Logger) CronJobConf {
 	}
 }
 
+func WithVerbose() CronJobConf {
+	return func(cj *CronJob) {
+		cj.verbose = true
+	}
+}
+
 type JobConf func(*Job)
 
 func WithRunOnStart() JobConf {
