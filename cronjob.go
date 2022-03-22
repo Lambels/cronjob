@@ -32,11 +32,11 @@ type Scheduler interface {
 	// GetNow returns the jobs that need to be ran now.
 	GetNow(time.Time) []*Job
 
-	// AddJob schedules a new job.
-	AddJob(*Node) int
+	// AddNode adds a new node to the scheduler.
+	AddNode(time.Time, *Node)
 
-	// RemoveJob removes job with id provided.
-	RemoveJob(int) error
+	// RemoveNode removes node with id provided.
+	RemoveNode(int) error
 }
 
 type FuncJob func() error
@@ -88,7 +88,7 @@ func (c *CronJob) RemoveJob(id int) {
 	defer c.runningMu.Unlock()
 
 	if c.isRunning {
-		c.scheduler.RemoveJob(id)
+		c.scheduler.RemoveNode(id)
 	} else {
 		c.remove <- id
 	}
@@ -118,7 +118,7 @@ func (c *CronJob) addJob(job *Job, schedule Schedule, confs ...JobConf) int {
 		if c.isRunning {
 			c.add <- node
 		} else {
-			c.scheduler.AddJob(node)
+			c.scheduler.AddNode(c.Now(), node)
 		}
 	}
 
@@ -128,7 +128,7 @@ func (c *CronJob) addJob(job *Job, schedule Schedule, confs ...JobConf) int {
 		Job:      job,
 	}
 	if c.isRunning {
-		c.scheduler.AddJob(node)
+		c.scheduler.AddNode(c.Now(), node)
 	} else {
 		c.add <- node
 	}
