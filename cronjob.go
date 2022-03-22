@@ -32,11 +32,17 @@ type Scheduler interface {
 	// GetNow returns the jobs that need to be ran now.
 	GetNow(time.Time) []*Job
 
+	// GetAll returns all the jobs in the scheduler.
+	GetAll() []*Job
+
 	// AddNode adds a new node to the scheduler.
 	AddNode(time.Time, *Node)
 
 	// RemoveNode removes node with id provided.
-	RemoveNode(int) error
+	RemoveNode(int)
+
+	// Clean removes nodes whos schedule duration is less then 0.
+	Clean(time.Time)
 }
 
 type FuncJob func() error
