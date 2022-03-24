@@ -26,7 +26,7 @@ type linkedList struct {
 // NextCycle gets the duration of sleeping before activating.
 func (l *linkedList) NextCycle(now time.Time) time.Duration {
 	if l.head == nil {
-		return 0
+		return -1
 	}
 
 	// the head node has the shortest duration.
