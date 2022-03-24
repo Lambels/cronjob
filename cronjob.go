@@ -41,7 +41,8 @@ type Scheduler interface {
 	// RemoveNode removes node with id provided.
 	RemoveNode(int)
 
-	// Clean removes nodes whos schedule duration is less then 0.
+	// Clean removes nodes whos schedule duration is less then or equal to 0.
+	// And re calculates schedules which need re calculation.
 	Clean(time.Time)
 }
 
@@ -105,6 +106,32 @@ func (c *CronJob) Location() *time.Location {
 	return c.location
 }
 
+// Start the processing thread in its own gorutine.
+//
+// no-op if already running.
+func (c *CronJob) Start() {
+	c.runningMu.Lock()
+	defer c.runningMu.Unlock()
+	if c.isRunning {
+		return
+	}
+	c.isRunning = true
+	go c.run()
+}
+
+// Start the processing thread.
+//
+// no-op if already running.
+func (c *CronJob) Run() {
+	c.runningMu.Lock()
+	if c.isRunning {
+		return
+	}
+	c.isRunning = true
+	c.runningMu.Unlock()
+	c.run()
+}
+
 func (c *CronJob) addJob(job *Job, schedule Schedule, confs ...JobConf) int {
 	c.runningMu.Lock()
 	defer c.runningMu.Unlock()
@@ -139,6 +166,64 @@ func (c *CronJob) addJob(job *Job, schedule Schedule, confs ...JobConf) int {
 		c.add <- node
 	}
 	return node.Id
+}
+
+func (c *CronJob) run() {
+	c.logDebugf("started processing thread")
+	now := c.Now()
+
+	for {
+		var timer *time.Timer
+		if sleep := c.scheduler.NextCycle(now); sleep > 0 {
+			timer = time.NewTimer(sleep)
+		} else {
+			timer = time.NewTimer(1000000 * time.Hour)
+		}
+
+		for {
+			select {
+			case now := <-timer.C:
+				now = now.In(c.location)
+
+				// run all jobs.
+				jobs := c.scheduler.GetNow(now)
+				for _, job := range jobs {
+					go job.Run()
+				}
+
+				// clean jobs.
+				c.scheduler.Clean(now)
+
+			case node := <-c.add:
+				timer.Stop()
+				now = c.Now()
+
+				c.scheduler.AddNode(now, node)
+				c.logDebugf("added new node with id: %v\n", node.Id)
+
+			case id := <-c.remove:
+				timer.Stop()
+				now = c.Now()
+
+				c.scheduler.RemoveNode(id)
+				c.logDebugf("atempting to remove node with id: %v\n", id)
+
+			case <-c.stop:
+				timer.Stop()
+
+				c.logger.Println("exiticing processing thread")
+				return
+			}
+
+			break
+		}
+	}
+}
+
+func (c *CronJob) logDebugf(format string, v ...interface{}) {
+	if c.verbose {
+		c.logger.Printf(format, v)
+	}
 }
 
 // Run runs the function provided to job with the chains.
