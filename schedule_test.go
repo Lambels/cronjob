@@ -66,7 +66,7 @@ func TestSchedule(t *testing.T) {
 		{
 			schedule: cronjob.EveryFixed(nowTesting, time.Hour*3),
 
-			expectedDur: time.Hour * 2,
+			expectedDur: time.Hour*1 + time.Minute*55,
 		},
 	}
 
