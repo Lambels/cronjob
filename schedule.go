@@ -29,7 +29,7 @@ func Every(now time.Time, every time.Duration) Schedule {
 // EveryFixed finds the next time interval: every (field) and runs it at that time.
 //
 // example:
-//	cronjob.EveryFixed(time.Now(), 3 * time.Hour)
+//	cronjob.EveryFixed(time.Now(), time.Hour * 3)
 // the schedule will find the next 3 hour interval to run at.
 //
 // possible 3 hour intervals: 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00, 24:00
