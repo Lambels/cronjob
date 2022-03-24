@@ -16,6 +16,7 @@ type CronJob struct {
 	add       chan *Node
 	remove    chan int
 	stop      chan struct{}
+	jobs      chan chan []*Job
 	runningMu sync.Mutex
 	isRunning bool
 }
@@ -64,6 +65,7 @@ func New(confs ...CronJobConf) *CronJob {
 		add:       make(chan *Node),
 		remove:    make(chan int),
 		stop:      make(chan struct{}),
+		jobs:      make(chan chan []*Job),
 	}
 
 	for _, conf := range confs {
@@ -132,6 +134,21 @@ func (c *CronJob) Run() {
 	c.run()
 }
 
+// Jobs returns the current jobs which are registered to the scheduler.
+func (c *CronJob) Jobs() []*Job {
+	c.runningMu.Lock()
+	defer c.runningMu.Unlock()
+
+	if c.isRunning {
+		replyChan := make(chan []*Job, 1)
+		c.jobs <- replyChan
+
+		return <-replyChan
+	} else {
+		return c.scheduler.GetAll()
+	}
+}
+
 func (c *CronJob) addJob(job *Job, schedule Schedule, confs ...JobConf) int {
 	c.runningMu.Lock()
 	defer c.runningMu.Unlock()
@@ -193,6 +210,10 @@ func (c *CronJob) run() {
 
 				// clean jobs.
 				c.scheduler.Clean(now)
+
+			case reply := <-c.jobs:
+				reply <- c.scheduler.GetAll()
+				continue // no need to re-calc timer.
 
 			case node := <-c.add:
 				timer.Stop()
