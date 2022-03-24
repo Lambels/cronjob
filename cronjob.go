@@ -243,7 +243,7 @@ func (c *CronJob) run() {
 
 func (c *CronJob) logDebugf(format string, v ...interface{}) {
 	if c.verbose {
-		c.logger.Printf(format, v)
+		c.logger.Printf(format, v...)
 	}
 }
 
