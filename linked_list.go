@@ -1,6 +1,8 @@
 package cronjob
 
-import "time"
+import (
+	"time"
+)
 
 // Node represents a node in the storage system.
 type Node struct {
@@ -66,8 +68,16 @@ func (l *linkedList) AddNode(now time.Time, node *Node) {
 		return
 	}
 
-	ptr := l.head
 	durInsertNode := node.Schedule.Calculate(now)
+
+	// if head is nil add node as the head.
+	if l.head == nil {
+		l.len++
+		l.head = node
+		return
+	}
+
+	ptr := l.head
 	for i := 0; i < l.len; i++ {
 		if durInsertNode <= ptr.Schedule.Calculate(now) {
 			// this can only happen for the first node as all the other nodes are already checked
