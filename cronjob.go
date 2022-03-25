@@ -41,10 +41,6 @@ type Scheduler interface {
 
 	// RemoveNode removes node with id provided.
 	RemoveNode(int)
-
-	// Clean removes nodes whos schedule duration is less then or equal to 0.
-	// And re calculates schedules which need re calculation.
-	Clean(time.Time)
 }
 
 type FuncJob func() error
@@ -202,14 +198,11 @@ func (c *CronJob) run() {
 			case now := <-timer.C:
 				now = now.In(c.location)
 
-				// run all jobs.
+				// run all jobs + clean.
 				jobs := c.scheduler.GetNow(now)
 				for _, job := range jobs {
 					go job.Run()
 				}
-
-				// clean jobs.
-				c.scheduler.Clean(now)
 
 			case reply := <-c.jobs:
 				reply <- c.scheduler.GetAll()
