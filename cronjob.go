@@ -30,8 +30,8 @@ type Scheduler interface {
 	// NextCycle returns the duration to sleep before next activation cycle.
 	NextCycle(time.Time) time.Duration
 
-	// GetNow returns the jobs that need to be ran now.
-	GetNow(time.Time) []*Job
+	// RunNow returns the jobs that need to be ran now and cleans the scheduler.
+	RunNow(time.Time) []*Job
 
 	// GetAll returns all the jobs in the scheduler.
 	GetAll() []*Job
@@ -199,7 +199,7 @@ func (c *CronJob) run() {
 				now = now.In(c.location)
 
 				// run all jobs + clean.
-				jobs := c.scheduler.GetNow(now)
+				jobs := c.scheduler.RunNow(now)
 				for _, job := range jobs {
 					go job.Run()
 				}
