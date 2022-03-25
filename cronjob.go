@@ -174,9 +174,9 @@ func (c *CronJob) addJob(job *Job, schedule Schedule, confs ...JobConf) int {
 		Job:      job,
 	}
 	if c.isRunning {
-		c.scheduler.AddNode(c.Now(), node)
-	} else {
 		c.add <- node
+	} else {
+		c.scheduler.AddNode(c.Now(), node)
 	}
 	return node.Id
 }
