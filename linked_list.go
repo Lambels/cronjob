@@ -33,17 +33,24 @@ func (l *linkedList) NextCycle(now time.Time) time.Duration {
 	return l.head.Schedule.Calculate(now)
 }
 
-// GetNow gets all the jobs that need to be ran now.
+// RunNow gets all the jobs that need to be ran now and cleans the scheduler.
 //
 // This includes any jobs scheduled to run now or in the past.
-func (l *linkedList) GetNow(now time.Time) (jobs []*Job) {
+func (l *linkedList) RunNow(now time.Time) (jobs []*Job) {
 	ptr := l.head
+	reCalcNodes := []*Node{}
 	for i := 0; i < l.len; i++ {
 		if ptr.Schedule.Calculate(now) <= 0 {
 			jobs = append(jobs, ptr.Job)
+			reCalcNodes = append(reCalcNodes, ptr)
 		}
 
 		ptr = ptr.Next
+	}
+
+	// clean nodes.
+	for _, node := range reCalcNodes {
+		l.clean(now.Add(1*time.Nanosecond), node)
 	}
 
 	return
@@ -107,11 +114,6 @@ func (l *linkedList) RemoveNode(id int) {
 	}
 }
 
-// Clean removes all nodes whos duration is less then zero.
-func (l *linkedList) Clean(now time.Time) {
-
-}
-
 // GetAll returns all the jobs in the storage system.
 func (l *linkedList) GetAll() (jobs []*Job) {
 	ptr := l.head
@@ -121,6 +123,19 @@ func (l *linkedList) GetAll() (jobs []*Job) {
 	}
 
 	return
+}
+
+// clean removes the node (field) and re-calculates appropiate nodes.
+func (l *linkedList) clean(now time.Time, node *Node) {
+	switch node.Schedule.(type) {
+	case *constantSchedule:
+		// remove nodes with constand schedule.
+		l.RemoveNode(node.Id)
+
+	default:
+		// re-add nodes with cyclic schedules.
+		l.AddNode(now, node)
+	}
 }
 
 // addFirst changes the head of the linked list.
