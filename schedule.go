@@ -1,6 +1,8 @@
 package cronjob
 
-import "time"
+import (
+	"time"
+)
 
 // At returns a schedule that runs at: at (field).
 func At(at time.Time) Schedule {
@@ -80,7 +82,7 @@ func (s *fixedCyclicSchedule) calculateNextInterval(now time.Time) time.Time {
 			now.Year(),
 			now.Month(),
 			now.Day(),
-			h*(h/now.Hour()+1),
+			h*(now.Hour()/h+1),
 			m,
 			s,
 			0,
@@ -88,10 +90,28 @@ func (s *fixedCyclicSchedule) calculateNextInterval(now time.Time) time.Time {
 		)
 
 	case m > 0:
-		return time.Time{}
+		return time.Date(
+			now.Year(),
+			now.Month(),
+			now.Day(),
+			h,
+			m*(now.Minute()/m+1),
+			s,
+			0,
+			now.Location(),
+		)
 
 	default:
-		return time.Time{}
+		return time.Date(
+			now.Year(),
+			now.Month(),
+			now.Day(),
+			h,
+			m,
+			s*(now.Second()/s+1),
+			0,
+			now.Location(),
+		)
 	}
 }
 
