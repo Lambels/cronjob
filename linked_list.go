@@ -35,24 +35,17 @@ func (l *linkedList) NextCycle(now time.Time) time.Duration {
 	return l.head.Schedule.Calculate(now)
 }
 
-// RunNow gets all the jobs that need to be ran now and cleans the scheduler.
+// RunNow gets all the node that need to be ran now.
 //
-// This includes any jobs scheduled to run now or in the past.
-func (l *linkedList) RunNow(now time.Time) (jobs []*Job) {
+// This includes any nodes scheduled to run now or in the past.
+func (l *linkedList) RunNow(now time.Time) (nodes []*Node) {
 	ptr := l.head
-	reCalcNodes := []*Node{}
 	for i := 0; i < l.len; i++ {
 		if ptr.Schedule.Calculate(now) <= 0 {
-			jobs = append(jobs, ptr.Job)
-			reCalcNodes = append(reCalcNodes, ptr)
+			nodes = append(nodes, ptr)
 		}
 
 		ptr = ptr.Next
-	}
-
-	// clean nodes.
-	for _, node := range reCalcNodes {
-		l.clean(now.Add(1*time.Nanosecond), node)
 	}
 
 	return
@@ -68,7 +61,10 @@ func (l *linkedList) AddNode(now time.Time, node *Node) {
 		return
 	}
 
-	durInsertNode := node.Schedule.Calculate(now)
+	// if inserting a cyclic schedule, move to next activation time.
+	if sched, ok := node.Schedule.(CyclicSchedule); ok {
+		sched.MoveNextAvtivation(now)
+	}
 
 	// if head is nil add node as the head.
 	if l.head == nil {
@@ -76,6 +72,8 @@ func (l *linkedList) AddNode(now time.Time, node *Node) {
 		l.head = node
 		return
 	}
+
+	durInsertNode := node.Schedule.Calculate(now)
 
 	ptr := l.head
 	for i := 0; i < l.len; i++ {
@@ -135,22 +133,28 @@ func (l *linkedList) GetAll() (jobs []*Job) {
 	return
 }
 
-// clean removes the node (field) and re-calculates appropiate nodes.
-func (l *linkedList) clean(now time.Time, node *Node) {
-	switch node.Schedule.(type) {
-	case *constantSchedule:
-		// remove nodes with constand schedule.
-		l.RemoveNode(node.Id)
+// Clean removes the node (field) and re-calculates appropiate nodes.
+func (l *linkedList) Clean(now time.Time, nodes []*Node) {
 
-	default:
-		// re-add nodes with cyclic schedules.
-		l.AddNode(now, node)
+	for _, node := range nodes {
+		switch node.Schedule.(type) {
+		case *constantSchedule:
+			// remove nodes with constand schedule.
+			l.RemoveNode(node.Id)
+
+		default:
+			// remove the ran node node.
+			l.RemoveNode(node.Id)
+
+			// then re-add the cyclic node.
+			l.AddNode(now, node)
+		}
 	}
 }
 
 // addFirst changes the head of the linked list.
 func (l *linkedList) addFirst(node *Node) {
-	ptrTemp := l.head.Next
+	ptrTemp := l.head
 	l.head = node
 	node.Next = ptrTemp
 }
