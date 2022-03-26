@@ -165,7 +165,7 @@ func main() {
 ### StopWithFlush:
 ```go
 func Job1() error {
-    time.Sleep(5 * time.Hour)
+    time.Sleep(1 * time.Hour)
     return nil
 }
 func Job2() error {
