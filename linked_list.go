@@ -16,7 +16,7 @@ type Node struct {
 	Job *Job
 
 	// The ptr to the next node.
-	Next *Node
+	next *Node
 }
 
 // linked list will point to the root node.
@@ -45,7 +45,7 @@ func (l *linkedList) RunNow(now time.Time) (nodes []*Node) {
 			nodes = append(nodes, ptr)
 		}
 
-		ptr = ptr.Next
+		ptr = ptr.next
 	}
 
 	return
@@ -84,7 +84,7 @@ func (l *linkedList) AddNode(now time.Time, node *Node) {
 			l.addFirst(node)
 			return
 
-		} else if ptr.Next == nil || durInsertNode <= ptr.Next.Schedule.Calculate(now) {
+		} else if ptr.next == nil || durInsertNode <= ptr.next.Schedule.Calculate(now) {
 			// add node after current node if next ptr is either nill (end of list)
 			// or duration of the ptr to the next node is less then desired node.
 			l.len++
@@ -93,7 +93,7 @@ func (l *linkedList) AddNode(now time.Time, node *Node) {
 		}
 
 		// advance in list.
-		ptr = ptr.Next
+		ptr = ptr.next
 	}
 }
 
@@ -110,24 +110,24 @@ func (l *linkedList) RemoveNode(id int) {
 		if ptr.Id == id {
 			if i > 0 {
 				prevNode := l.getAt(i - 1)
-				prevNode.Next = l.getAt(i).Next
+				prevNode.next = l.getAt(i).next
 			} else {
-				l.head = ptr.Next
+				l.head = ptr.next
 			}
 			l.len--
 			return
 		}
 
-		ptr = ptr.Next
+		ptr = ptr.next
 	}
 }
 
 // GetAll returns all the jobs in the storage system.
-func (l *linkedList) GetAll() (jobs []*Job) {
+func (l *linkedList) GetAll() (jobs []*Node) {
 	ptr := l.head
 	for i := 0; i < l.len; i++ {
-		jobs = append(jobs, ptr.Job)
-		ptr = ptr.Next
+		jobs = append(jobs, ptr)
+		ptr = ptr.next
 	}
 
 	return
@@ -156,15 +156,15 @@ func (l *linkedList) Clean(now time.Time, nodes []*Node) {
 func (l *linkedList) addFirst(node *Node) {
 	ptrTemp := l.head
 	l.head = node
-	node.Next = ptrTemp
+	node.next = ptrTemp
 }
 
 // insertAfter inserts the node (field) between the instance it is called upon and
 // the node which is linked to the instance it is called upon.
 func (n *Node) insertAfter(node *Node) {
-	prtTemp := n.Next
-	n.Next = node
-	node.Next = prtTemp
+	prtTemp := n.next
+	n.next = node
+	node.next = prtTemp
 }
 
 func (l *linkedList) getAt(pos int) *Node {
@@ -178,7 +178,7 @@ func (l *linkedList) getAt(pos int) *Node {
 
 	ptr := l.head
 	for i := 0; i < pos; i++ {
-		ptr = ptr.Next
+		ptr = ptr.next
 	}
 	return ptr
 }
