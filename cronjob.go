@@ -248,7 +248,7 @@ func (c *CronJob) addJob(job *Job, schedule Schedule, confs ...JobConf) int {
 }
 
 func (c *CronJob) run() {
-	c.logDebugf("started processing thread")
+	c.logger.Println("starting processing thread")
 	now := c.Now()
 
 	for {
