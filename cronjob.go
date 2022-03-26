@@ -272,7 +272,7 @@ func (c *CronJob) run() {
 
 				// clean nodes after running.
 				c.scheduler.Clean(now, nodes)
-				c.logger.Printf("woke up at: %v\n", woke)
+				c.logDebugf("woke up at: %v\n", woke)
 
 			case reply := <-c.nodes:
 				reply <- c.scheduler.GetAll()
