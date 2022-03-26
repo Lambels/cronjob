@@ -181,7 +181,7 @@ func main() {
 
     cron.Start()
     ctx := cron.StopWithFlush()
-    <-ctx // waits for Job1 and Job2 to finish. (1 hour)
+    <-ctx.Done() // waits for Job1 and Job2 to finish. (1 hour)
 
     cron.AddFunc(Job1, cronjob.In(cron.Now(), 2 * time.Second)) // still works.
 }
