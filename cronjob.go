@@ -26,12 +26,20 @@ type Schedule interface {
 	Calculate(time.Time) time.Duration
 }
 
+type CyclicSchedule interface {
+	// MoveNextAvtivation re-calculates the next time the schedule will be activated
+	// at.
+	MoveNextAvtivation(time.Time)
+
+	Schedule
+}
+
 type Scheduler interface {
 	// NextCycle returns the duration to sleep before next activation cycle.
 	NextCycle(time.Time) time.Duration
 
 	// RunNow returns the jobs that need to be ran now and cleans the scheduler.
-	RunNow(time.Time) []*Job
+	RunNow(time.Time) []*Node
 
 	// GetAll returns all the jobs in the scheduler.
 	GetAll() []*Job
@@ -41,6 +49,9 @@ type Scheduler interface {
 
 	// RemoveNode removes node with id provided.
 	RemoveNode(int)
+
+	// Clean removes the node (field) and re-calculates appropiate nodes.
+	Clean(time.Time, []*Node)
 }
 
 type FuncJob func() error
@@ -195,14 +206,17 @@ func (c *CronJob) run() {
 
 		for {
 			select {
-			case now := <-timer.C:
-				now = now.In(c.location)
+			case woke := <-timer.C:
+				now = woke.In(c.location)
 
 				// run all jobs + clean.
-				jobs := c.scheduler.RunNow(now)
-				for _, job := range jobs {
-					go job.Run()
+				nodes := c.scheduler.RunNow(now)
+				for _, node := range nodes {
+					go node.Job.Run()
 				}
+
+				// clean nodes after running.
+				c.scheduler.Clean(now, nodes)
 
 			case reply := <-c.jobs:
 				reply <- c.scheduler.GetAll()
