@@ -128,6 +128,46 @@ func (c *CronJob) Start() {
 	go c.run()
 }
 
+// Stop stops the cronjobs processing thread.
+//
+// no-op if not running.
+func (c *CronJob) Stop() {
+	c.runningMu.Lock()
+	defer c.runningMu.Unlock()
+	if !c.isRunning {
+		return
+	}
+
+	c.stop <- struct{}{}
+	c.isRunning = false
+}
+
+// StopWithFlush stops the cronjobs processing thread.
+//
+// runs all the current jobs and cleans the scheduler.
+//
+// no-op if not running.
+func (c *CronJob) StopWithFlush() {
+	c.runningMu.Lock()
+	if !c.isRunning {
+		return
+	}
+
+	c.stop <- struct{}{}
+	c.isRunning = false
+	c.runningMu.Unlock()
+
+	nodes := c.Jobs()
+
+	// run jobs.
+	for _, node := range nodes {
+		go node.Job.Run()
+	}
+
+	// clean nodes.
+	c.scheduler.Clean(c.Now(), nodes)
+}
+
 // Start the processing thread.
 //
 // no-op if already running.
@@ -217,6 +257,7 @@ func (c *CronJob) run() {
 
 				// clean nodes after running.
 				c.scheduler.Clean(now, nodes)
+				c.logger.Printf("woke up at: %v\n", woke)
 
 			case reply := <-c.nodes:
 				reply <- c.scheduler.GetAll()
