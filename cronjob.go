@@ -1,6 +1,7 @@
 package cronjob
 
 import (
+	"context"
 	"log"
 	"os"
 	"sync"
@@ -147,25 +148,39 @@ func (c *CronJob) Stop() {
 // runs all the current jobs and cleans the scheduler.
 //
 // no-op if not running.
-func (c *CronJob) StopWithFlush() {
+func (c *CronJob) StopWithFlush() context.Context {
 	c.runningMu.Lock()
 	if !c.isRunning {
-		return
+		return context.Background()
 	}
 
 	c.stop <- struct{}{}
 	c.isRunning = false
 	c.runningMu.Unlock()
 
+	// run jobs.
+	var wgJobs sync.WaitGroup
 	nodes := c.Jobs()
 
-	// run jobs.
+	wgJobs.Add(len(nodes))
 	for _, node := range nodes {
-		go node.Job.Run()
+		go func(node *Node) {
+			node.Job.Run()
+			wgJobs.Done()
+		}(node)
 	}
 
 	// clean nodes.
 	c.scheduler.Clean(c.Now(), nodes)
+
+	// wait for wait group to finish and cancel context.
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		wgJobs.Wait()
+		cancel()
+	}()
+
+	return ctx
 }
 
 // Start the processing thread.
