@@ -9,12 +9,12 @@ import (
 
 func TestSchedule(t *testing.T) {
 	nowTesting := time.Date(
-		2022,
-		10,
-		7,
-		10,
-		5,
-		0,
+		2022, // year
+		10,   // month
+		7,    // day
+		10,   // hour
+		5,    // min
+		0,    // sec
 		0,
 		time.Local,
 	)
@@ -50,32 +50,42 @@ func TestSchedule(t *testing.T) {
 
 		// In.
 		{
-			schedule: cronjob.In(nowTesting, time.Hour*60),
+			schedule: cronjob.In(nowTesting, 5*time.Minute),
 
-			expectedDur: time.Hour * 60,
+			expectedDur: 5 * time.Minute,
 		},
 
 		// Every.
 		{
-			schedule: cronjob.Every(nowTesting.Add(-time.Hour*20), time.Duration(time.Hour*50)),
+			schedule: cronjob.Every(5 * time.Minute),
 
-			expectedDur: time.Hour * 30,
+			expectedDur: 5 * time.Minute,
 		},
 
 		// EveryFixed.
 		{
-			schedule: cronjob.EveryFixed(nowTesting, time.Hour*3),
+			schedule: cronjob.EveryFixed(10 * time.Minute),
 
-			expectedDur: time.Hour*1 + time.Minute*55,
+			expectedDur: 5 * time.Minute,
 		},
 	}
 
 	for _, c := range cases {
-		want := c.expectedDur
-		v := c.schedule.Calculate(nowTesting)
+		var got time.Duration
 
-		if want != v {
-			t.Errorf("Expected: %v Got: %v", want, v)
+		switch c.schedule.(type) {
+		case cronjob.CyclicSchedule:
+			sched := c.schedule.(cronjob.CyclicSchedule)
+			sched.MoveNextAvtivation(nowTesting)
+			got = sched.Calculate(nowTesting)
+
+		case cronjob.Schedule:
+			got = c.schedule.Calculate(nowTesting)
+
+		}
+
+		if want := c.expectedDur; got != want {
+			t.Fatalf("want: %v got: %v\n", want, got)
 		}
 	}
 }
