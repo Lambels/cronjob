@@ -223,12 +223,12 @@ func (c *CronJob) addJob(job *Job, schedule Schedule, confs ...JobConf) int {
 	// add a job which will be ran on the first execution cycle (negative time.Duration).
 	if job.runOnStart {
 		node := &Node{
-			Schedule: &constantSchedule{time.Time{}},
+			Schedule: &constantSchedule{c.Now().Add(-1 * time.Second)},
 			Job:      job,
 		}
 
 		if c.isRunning {
-			c.add <- node
+			go job.Run()
 		} else {
 			c.scheduler.AddNode(c.Now(), node)
 		}
@@ -251,6 +251,15 @@ func (c *CronJob) run() {
 	c.logger.Println("starting processing thread")
 	now := c.Now()
 
+	// get jobs which need to run on start.
+	nodes := c.scheduler.RunNow(now)
+	for _, node := range nodes {
+		go node.Job.Run()
+	}
+
+	// clean nodes after running.
+	c.scheduler.Clean(now, nodes)
+
 	for {
 		var timer *time.Timer
 		if sleep := c.scheduler.NextCycle(now); sleep > 0 {
@@ -264,7 +273,7 @@ func (c *CronJob) run() {
 			case woke := <-timer.C:
 				now = woke.In(c.location)
 
-				// run all jobs + clean.
+				// run all jobs.
 				nodes := c.scheduler.RunNow(now)
 				for _, node := range nodes {
 					go node.Job.Run()
