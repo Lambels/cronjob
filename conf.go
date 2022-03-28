@@ -1,6 +1,9 @@
 package cronjob
 
-import "log"
+import (
+	"log"
+	"time"
+)
 
 type CronJobConf func(*CronJob)
 
@@ -13,6 +16,12 @@ func WithLogger(logger *log.Logger) CronJobConf {
 func WithVerbose() CronJobConf {
 	return func(cj *CronJob) {
 		cj.verbose = true
+	}
+}
+
+func WithLocation(loc *time.Location) CronJobConf {
+	return func(cj *CronJob) {
+		cj.location = loc
 	}
 }
 
