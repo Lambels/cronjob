@@ -11,6 +11,14 @@ func NewChain(c ...func(FuncJob) FuncJob) Chain {
 	return Chain(c)
 }
 
+// MergeChains merges n (field) chains into 1 parent chain.
+func MergeChains(n ...Chain) (merged Chain) {
+	for _, chain := range n {
+		merged = append(merged, chain...)
+	}
+	return
+}
+
 func (c Chain) Run(job FuncJob) {
 	// decorate job.
 	for i := range c {
