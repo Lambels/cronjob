@@ -67,7 +67,46 @@ func main() {
 
 ### JobConf:
 
-Job Configurations configure the behaviour of the job. Examples of such functions are found [here](https://github.com/Lambels/cronjob/blob/main/conf.go)
+Job Configurations configure the behaviour of the job. Examples of such functions are found [here.](https://github.com/Lambels/cronjob/blob/main/conf.go)
+
+A job configuration is a function with the signature `JobConf func(*Job)`.
+
+```go
+func Job1() error {
+    fmt.Println("Hello World, im a FuncJob")
+    return nil
+}
+
+func Job2() error {
+    fmt.Println("Im a FuncJob which returns an error")
+    return fmt.Errorf("ERR")
+}
+
+func main() {
+    cron := cronjob.New()
+
+    cron.AddFunc(
+        Job1,
+        cronjob.In(cron.Now(), 5 * time.Second),
+        
+
+        // configs:
+        cronjob.WithRunOnStart(), // runs job on start.
+    )
+
+    cron.AddFunc(
+        Job2,
+        cronjob.In(cron.Now(), 10 * time.Second),
+
+        // configs:
+        cronjob.WithChain(
+            // retry Job2 5 times in 5 second intervals.
+            // always add cornjob.Retry() the first in the chain.
+            cronjob.NewChain(cronjob.Retry(5 * time.Second, 5)),
+        ),
+    )
+}
+```
 
 ### All together:
 
@@ -94,6 +133,122 @@ func main() {
     time.Sleep(1 * time.Hour)
 
     cron.Close()
+}
+```
+
+## Chains:
+
+Chains allow you to customize the behavour of the Jobs when the jobs are running. A chain function making up a chain has the following signature: `func(FuncJob) FuncJob`. A chain is just a slice of these functions: `type Chain []func(FuncJob) FuncJob`.
+
+**cronjob.Retry() should always be added first in the chain to keep expected behaviour.**
+> *Inspiration from [cron](https://github.com/robfig/cron)*
+
+### Creating A Chain:
+```go
+func SomeChain(fj cronjob.FuncJob) cronjob.FuncJob {
+	return func() error {
+		log.Println("Hello from SomeChain")
+        return fj() // call next function in chain.
+	}
+}
+
+func SomeOtherChain(fj cronjob.FuncJob) cronjob.FuncJob {
+	return func() error {
+		log.Println("Hello from SomeOtherChain")
+        return fj() // call next function in chain.
+	}
+}
+
+func Job() error {
+    log.Println("Hello from Job")
+    return nil
+}
+
+func main() {
+    chain := cronjob.NewChain(SomeChain, SomeOtherChain)
+    chain.Run(job)
+
+    // output:
+    // "Hello from SomeChain"
+    // "Hello from SomeOtherChain"
+    // "Hello from Job"
+}
+```
+
+### Merging n Chains:
+```go
+func SomeChain(fj cronjob.FuncJob) cronjob.FuncJob {
+	return func() error {
+		log.Println("Hello from SomeChain")
+        return fj() // call next function in chain.
+	}
+}
+
+func SomeOtherChain(fj cronjob.FuncJob) cronjob.FuncJob {
+	return func() error {
+		log.Println("Hello from SomeOtherChain")
+        return fj() // call next function in chain.
+	}
+}
+
+func SomeOtherOtherChain(fj cronjob.FuncJob) cronjob.FuncJob {
+	return func() error {
+		log.Println("Hello from SomeOtherOtherChain")
+        return fj() // call next function in chain.
+	}
+}
+
+func Job() error {
+    log.Println("Hello from Job")
+    return nil
+}
+
+func main() {
+    chain1 := cronjob.NewChain(SomeChain, SomeOtherChain)
+    chain2 := cronjob.NewChain(SomeOtherOtherChain)
+
+    chain3 := cronjob.MergeChains(chain1, chain2)
+    chain3.Run(Job)
+
+    // output:
+    // "Hello from SomeChain"
+    // "Hello from SomeOtherChain"
+    // "Hello from SomeOtherOtherChain"
+    // "Hello from Job"
+}
+```
+
+### Fault Tolerance:
+**always add cronjob.Retry() first in the chain!**
+```go
+func SomeChain(fj cronjob.FuncJob) cronjob.FuncJob {
+	return func() error {
+		log.Println("Hello from SomeChain")
+        return fj() // call next function in chain.
+	}
+}
+
+func Job() error {
+    log.Println("Hello from Job")
+    return fmt.Errorf("ERR")
+}
+
+func main() {
+    chain1 := cronjob.NewChain(cronjob.Retry(5*time.Second, 5), SomeChain)
+
+    chain1.Run(Job)
+
+    // output:
+    // "Hello from SomeChain"
+    // "Hello from Job"
+    // "Hello from SomeChain"
+    // "Hello from Job"
+    // "Hello from SomeChain"
+    // "Hello from Job"
+    // "Hello from SomeChain"
+    // "Hello from Job"
+    // "Hello from SomeChain"
+    // "Hello from Job"
 }
 ```
 
