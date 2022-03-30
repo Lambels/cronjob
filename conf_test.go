@@ -78,7 +78,7 @@ func TestWithChain(t *testing.T) {
 	)
 
 	cron.Start()
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 	cron.Stop()
 
 	if got, want := count, 1; got != want {
