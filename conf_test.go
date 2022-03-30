@@ -16,9 +16,10 @@ func TestWithLogger(t *testing.T) {
 
 	cron := cronjob.New(cronjob.WithLogger(logger))
 
-	// start and stop should generate messajes into the logger.
+	// start and stop should generate messages into the logger.
 	cron.Start()
 	cron.Stop()
+	time.Sleep(1 * time.Second)
 
 	if got, want := buf.Len(), 0; got <= want {
 		t.Fatalf("got: %v want: non zero + positive", got)
@@ -31,10 +32,11 @@ func TestWithVerbose(t *testing.T) {
 
 	cron := cronjob.New(cronjob.WithLogger(logger), cronjob.WithVerbose())
 
-	// start and stop should generate messajes into the logger.
+	// start and stop should generate messages into the logger.
 	cron.Start()
 	cron.AddFunc(func() error { return nil }, cronjob.In(cron.Now(), 5*time.Hour))
 	cron.Stop()
+	time.Sleep(1 * time.Second)
 
 	reader := bufio.NewReader(buf)
 	// advance first 2 lines.
@@ -100,7 +102,7 @@ func TestWithRunOnStart(t *testing.T) {
 		)
 
 		cron.Start()
-		time.Sleep(1 * time.Second)
+		time.Sleep(2 * time.Second)
 		cron.Stop()
 
 		if got, want := count, 2; got != want {
@@ -131,7 +133,7 @@ func TestWithRunOnStart(t *testing.T) {
 		)
 
 		cron.Start()
-		time.Sleep(1 * time.Second)
+		time.Sleep(2 * time.Second)
 		cron.Stop()
 
 		if got, want := count, 2; got != want {
