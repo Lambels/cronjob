@@ -32,7 +32,11 @@ func (l *linkedList) NextCycle(now time.Time) time.Duration {
 	}
 
 	// the head node has the shortest duration.
-	return l.head.Schedule.Calculate(now)
+	if v := l.head.Schedule.Calculate(now); v < 0 {
+		return 0
+	} else {
+		return v
+	}
 }
 
 // RunNow gets all the node that need to be ran now.
