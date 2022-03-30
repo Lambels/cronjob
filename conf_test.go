@@ -1,4 +1,4 @@
-package cronjob_test
+package cronjob
 
 import (
 	"bufio"
@@ -6,15 +6,13 @@ import (
 	"log"
 	"testing"
 	"time"
-
-	"github.com/Lambels/cronjob"
 )
 
 func TestWithLogger(t *testing.T) {
 	buf := &bytes.Buffer{}
 	logger := log.New(buf, "[Test]", log.Flags())
 
-	cron := cronjob.New(cronjob.WithLogger(logger))
+	cron := New(WithLogger(logger))
 
 	// start and stop should generate messages into the logger.
 	cron.Start()
@@ -30,11 +28,11 @@ func TestWithVerbose(t *testing.T) {
 	buf := &bytes.Buffer{}
 	logger := log.New(buf, "[Test]", log.Flags())
 
-	cron := cronjob.New(cronjob.WithLogger(logger), cronjob.WithVerbose())
+	cron := New(WithLogger(logger), WithVerbose())
 
 	// start and stop should generate messages into the logger.
 	cron.Start()
-	cron.AddFunc(func() error { return nil }, cronjob.In(cron.Now(), 5*time.Hour))
+	cron.AddFunc(func() error { return nil }, In(cron.Now(), 5*time.Hour))
 	cron.Stop()
 	time.Sleep(1 * time.Second)
 
@@ -50,7 +48,7 @@ func TestWithVerbose(t *testing.T) {
 }
 
 func TestWithLocation(t *testing.T) {
-	cron := cronjob.New(cronjob.WithLocation(time.UTC))
+	cron := New(WithLocation(time.UTC))
 
 	if got, want := cron.Location(), time.UTC; got != want {
 		t.Fatalf("got: %v want: %v", got, want)
@@ -62,13 +60,13 @@ func TestWithLocation(t *testing.T) {
 func TestWithChain(t *testing.T) {
 	var count int
 
-	cron := cronjob.New()
+	cron := New()
 
 	cron.AddFunc(
 		func() error { return nil },
-		cronjob.In(cron.Now(), 1*time.Second),
-		cronjob.WithChain(
-			cronjob.NewChain(func(fj cronjob.FuncJob) cronjob.FuncJob {
+		In(cron.Now(), 1*time.Second),
+		WithChain(
+			NewChain(func(fj FuncJob) FuncJob {
 				return func() error {
 					count++
 					return fj()
@@ -90,15 +88,15 @@ func TestWithRunOnStart(t *testing.T) {
 	t.Run("Without Chains", func(t *testing.T) {
 		var count int
 
-		cron := cronjob.New()
+		cron := New()
 
 		cron.AddFunc(
 			func() error { count++; return nil },
-			cronjob.In(
+			In(
 				cron.Now(),
 				1*time.Second,
 			),
-			cronjob.WithRunOnStart(),
+			WithRunOnStart(),
 		)
 
 		cron.Start()
@@ -113,17 +111,17 @@ func TestWithRunOnStart(t *testing.T) {
 	t.Run("With Chains", func(t *testing.T) {
 		var count int
 
-		cron := cronjob.New()
+		cron := New()
 
 		cron.AddFunc(
 			func() error { return nil },
-			cronjob.In(
+			In(
 				cron.Now(),
 				1*time.Second,
 			),
-			cronjob.WithRunOnStart(),
-			cronjob.WithChain(
-				cronjob.NewChain(func(fj cronjob.FuncJob) cronjob.FuncJob {
+			WithRunOnStart(),
+			WithChain(
+				NewChain(func(fj FuncJob) FuncJob {
 					return func() error {
 						count++
 						return fj()

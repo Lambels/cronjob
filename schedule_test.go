@@ -1,10 +1,8 @@
-package cronjob_test
+package cronjob
 
 import (
 	"testing"
 	"time"
-
-	"github.com/Lambels/cronjob"
 )
 
 func TestSchedule(t *testing.T) {
@@ -20,12 +18,12 @@ func TestSchedule(t *testing.T) {
 	)
 
 	cases := []struct {
-		schedule    cronjob.Schedule
+		schedule    Schedule
 		expectedDur time.Duration
 	}{
 		// At.
 		{
-			schedule: cronjob.At(time.Date(
+			schedule: At(time.Date(
 				2022,
 				10,
 				7,
@@ -50,21 +48,21 @@ func TestSchedule(t *testing.T) {
 
 		// In.
 		{
-			schedule: cronjob.In(nowTesting, 5*time.Minute),
+			schedule: In(nowTesting, 5*time.Minute),
 
 			expectedDur: 5 * time.Minute,
 		},
 
 		// Every.
 		{
-			schedule: cronjob.Every(5 * time.Minute),
+			schedule: Every(5 * time.Minute),
 
 			expectedDur: 5 * time.Minute,
 		},
 
 		// EveryFixed.
 		{
-			schedule: cronjob.EveryFixed(10 * time.Minute),
+			schedule: EveryFixed(10 * time.Minute),
 
 			expectedDur: 5 * time.Minute,
 		},
@@ -74,12 +72,12 @@ func TestSchedule(t *testing.T) {
 		var got time.Duration
 
 		switch c.schedule.(type) {
-		case cronjob.CyclicSchedule:
-			sched := c.schedule.(cronjob.CyclicSchedule)
+		case CyclicSchedule:
+			sched := c.schedule.(CyclicSchedule)
 			sched.MoveNextAvtivation(nowTesting)
 			got = sched.Calculate(nowTesting)
 
-		case cronjob.Schedule:
+		case Schedule:
 			got = c.schedule.Calculate(nowTesting)
 
 		}
