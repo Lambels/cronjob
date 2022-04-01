@@ -1,4 +1,4 @@
-# CronJob ![build](https://github.com/Lambels/cronjob/workflows/build/badge.svg)
+# CronJob ![build](https://github.com/Lambels/cronjob/workflows/build/badge.svg) [![Go Report Card](https://goreportcard.com/badge/github.com/Lambels/cronjob)](https://goreportcard.com/report/github.com/Lambels/cronjob)
 CronJob is like cron but uses golang [time](https://pkg.go.dev/time) specification.
 
 ### go get it:
