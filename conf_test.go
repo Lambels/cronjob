@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"log"
+	"sync"
 	"testing"
 	"time"
 )
 
 func TestWithLogger(t *testing.T) {
+	t.Parallel()
 	buf := &bytes.Buffer{}
 	logger := log.New(buf, "[Test]", log.Flags())
 
@@ -25,6 +27,7 @@ func TestWithLogger(t *testing.T) {
 }
 
 func TestWithVerbose(t *testing.T) {
+	t.Parallel()
 	buf := &bytes.Buffer{}
 	logger := log.New(buf, "[Test]", log.Flags())
 
@@ -48,6 +51,7 @@ func TestWithVerbose(t *testing.T) {
 }
 
 func TestWithLocation(t *testing.T) {
+	t.Parallel()
 	cron := New(WithLocation(time.UTC))
 
 	if got, want := cron.Location(), time.UTC; got != want {
@@ -58,10 +62,10 @@ func TestWithLocation(t *testing.T) {
 /* Job Confs --------------------------------------------------------------------------- */
 
 func TestWithChain(t *testing.T) {
+	t.Parallel()
 	var count int
 
 	cron := New()
-
 	cron.AddFunc(
 		func() error { return nil },
 		In(cron.Now(), 1*time.Second),
@@ -74,68 +78,75 @@ func TestWithChain(t *testing.T) {
 			}),
 		),
 	)
-
 	cron.Start()
-	time.Sleep(2 * time.Second)
-	cron.Stop()
+	defer cron.Stop()
 
+	time.Sleep(2 * time.Second)
 	if got, want := count, 1; got != want {
 		t.Fatalf("got: %v want: %v", got, want)
 	}
 }
 
 func TestWithRunOnStart(t *testing.T) {
+	t.Parallel()
 	t.Run("Without Chains", func(t *testing.T) {
-		var count int
+		t.Parallel()
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
 
 		cron := New()
-
 		cron.AddFunc(
-			func() error { count++; return nil },
+			func() error { wg.Done(); return nil },
 			In(
 				cron.Now(),
-				1*time.Second,
+				10*time.Second,
 			),
 			WithRunOnStart(),
 		)
-
 		cron.Start()
-		time.Sleep(2 * time.Second)
-		cron.Stop()
+		defer cron.Stop()
 
-		if got, want := count, 2; got != want {
-			t.Fatalf("got: %v want: %v", got, want)
+		select {
+		case <-wait(wg):
+			// ran.
+
+		case <-time.After(1 * time.Second):
+			t.Fatal("job didn't run.")
 		}
+
 	})
 
 	t.Run("With Chains", func(t *testing.T) {
-		var count int
+		t.Parallel()
+		wg := &sync.WaitGroup{}
+		wg.Add(2)
 
 		cron := New()
-
 		cron.AddFunc(
-			func() error { return nil },
+			func() error { wg.Done(); return nil },
 			In(
 				cron.Now(),
-				1*time.Second,
+				10*time.Second,
 			),
 			WithRunOnStart(),
 			WithChain(
 				NewChain(func(fj FuncJob) FuncJob {
 					return func() error {
-						count++
+						wg.Done()
 						return fj()
 					}
 				}),
 			),
 		)
-
 		cron.Start()
-		time.Sleep(2 * time.Second)
-		cron.Stop()
+		defer cron.Stop()
 
-		if got, want := count, 2; got != want {
-			t.Fatalf("got: %v want: %v", got, want)
+		select {
+		case <-wait(wg):
+			// ran.
+
+		case <-time.After(1 * time.Second):
+			t.Fatal("job didn't run.")
 		}
 	})
 }
