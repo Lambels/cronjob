@@ -51,7 +51,7 @@ type Scheduler interface {
 	// RemoveNode removes node with id provided.
 	RemoveNode(int)
 
-	// Clean removes the node (field) and re-calculates appropiate nodes.
+	// Clean removes the node (field) and re-calculates appropriate nodes.
 	Clean(time.Time, []*Node)
 }
 
@@ -290,7 +290,7 @@ func (c *CronJob) run() {
 				now = c.Now()
 
 				c.scheduler.RemoveNode(id)
-				c.logDebugf("atempting to remove node with id: %v\n", id)
+				c.logDebugf("attempting to remove node with id: %v\n", id)
 
 			case <-c.stop:
 				timer.Stop()

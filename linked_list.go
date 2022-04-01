@@ -137,7 +137,7 @@ func (l *linkedList) GetAll() (jobs []*Node) {
 	return
 }
 
-// Clean removes the node (field) and re-calculates appropiate nodes.
+// Clean removes the node (field) and re-calculates appropriate nodes.
 func (l *linkedList) Clean(now time.Time, nodes []*Node) {
 
 	for _, node := range nodes {
