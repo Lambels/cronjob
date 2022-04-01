@@ -251,18 +251,9 @@ func (c *CronJob) run() {
 	c.logger.Println("starting processing thread")
 	now := c.Now()
 
-	// get jobs which need to run on start.
-	nodes := c.scheduler.RunNow(now)
-	for _, node := range nodes {
-		go node.Job.Run()
-	}
-
-	// clean nodes after running.
-	c.scheduler.Clean(now, nodes)
-
 	for {
 		var timer *time.Timer
-		if sleep := c.scheduler.NextCycle(now); sleep > 0 {
+		if sleep := c.scheduler.NextCycle(now); sleep >= 0 {
 			timer = time.NewTimer(sleep)
 		} else {
 			timer = time.NewTimer(1000000 * time.Hour)
