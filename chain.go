@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// Chain is a slice of decorator functions.
 type Chain []func(FuncJob) FuncJob
 
 // NewChain returns a chain of decorators which run in FIFO order.
@@ -19,6 +20,7 @@ func MergeChains(n ...Chain) (merged Chain) {
 	return
 }
 
+// Run runs job (field) with the chains.
 func (c Chain) Run(job FuncJob) {
 	// decorate job.
 	for i := range c {
@@ -43,23 +45,25 @@ func Retry(timeout time.Duration, max int) func(FuncJob) FuncJob {
 	}
 
 	return func(fj FuncJob) FuncJob {
+		// call chain from here.
 		err := fj()
 
 		if err != nil {
-			go func() {
-				ticker := time.NewTicker(timeout)
 
-				// use 1 to compensate for first error checking call.
-				for i := 1; i < max; i++ {
-					select {
-					case <-ticker.C:
-						if err := fj(); err == nil {
-							ticker.Stop()
-							return
-						}
+			ticker := time.NewTicker(timeout)
+
+			// use 1 to compensate for first error checking call.
+			for i := 1; i < max; i++ {
+				select {
+				case <-ticker.C:
+					if err := fj(); err == nil {
+						ticker.Stop()
+						break
 					}
+					continue
 				}
-			}()
+				break
+			}
 		}
 
 		// ends chain.
