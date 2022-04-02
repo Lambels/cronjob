@@ -123,26 +123,60 @@ func TestAddNode(t *testing.T) {
 }
 
 func TestRemoveNode(t *testing.T) {
+	c := New()
+	id := c.AddFunc(func() error { return nil }, In(time.Now(), 5*time.Second))
+	c.scheduler.RemoveNode(id)
 
+	if got, want := c.scheduler.GetAll(), []*Node{}; reflect.DeepEqual(got, want) {
+		t.Fatalf("got: %v want: %v", got, want)
+	}
 }
 
 func TestGetAll(t *testing.T) {
 	t.Run("Test Empty", func(t *testing.T) {
+		l := &linkedList{}
 
+		if got, want := len(l.GetAll()), 0; got != want {
+			t.Fatalf("got: %v want: %v", got, want)
+		}
 	})
 
 	t.Run("Test Content", func(t *testing.T) {
+		n1 := &Node{
+			Schedule: In(time.Now(), 2*time.Second),
+		}
 
+		l := newWithNode(time.Now(), n1)
+
+		if got, want := l.GetAll(), []*Node{n1}; !reflect.DeepEqual(got, want) {
+			t.Fatalf("got: %v want: %v", got, want)
+		}
 	})
 }
 
 func TestClean(t *testing.T) {
 	t.Run("Test Cyclic Node", func(t *testing.T) {
+		now := time.Now()
 
+		l := newWithNode(now, &Node{Id: 1, Schedule: Every(5 * time.Second)})
+		l.Clean(now.Add(6*time.Second), l.GetAll())
+
+		// verify that it gets re added.
+		if got, want := len(l.GetAll()), 1; got != want {
+			t.Fatalf("got: %v want: %v", got, want)
+		}
 	})
 
 	t.Run("Test Constant Node", func(t *testing.T) {
+		now := time.Now()
 
+		l := newWithNode(now, &Node{Schedule: In(now, 5*time.Second)})
+		l.Clean(now.Add(6*time.Second), l.GetAll())
+
+		// verify that it gets removed.
+		if got, want := len(l.GetAll()), 0; got != want {
+			t.Fatalf("got: %v want: %v", got, want)
+		}
 	})
 }
 
