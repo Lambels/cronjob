@@ -3,6 +3,7 @@ package cronjob
 import (
 	"fmt"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 )
@@ -54,18 +55,21 @@ func TestRetry(t *testing.T) {
 	t.Parallel()
 	t.Run("Test Timeout", func(t *testing.T) {
 		t.Parallel()
-		var count int
+		wg := &sync.WaitGroup{}
+		wg.Add(2)
 
 		job := func() error {
-			count++
+			wg.Done()
 			return fmt.Errorf("error")
 		}
+		go NewChain(Retry(2*time.Second, 2)).Run(job)
 
-		NewChain(Retry(100*time.Hour, 10)).Run(job)
-		time.Sleep(1 * time.Second)
+		select {
+		case <-wait(wg):
+			t.Fatal("job ran.")
 
-		if got, want := count, 1; got != want {
-			t.Fatalf("want: %v got: %v\n", want, got)
+		case <-time.After(1 * time.Second):
+			// timeout works and second job got delayed.
 		}
 	})
 
@@ -75,17 +79,12 @@ func TestRetry(t *testing.T) {
 
 		job := func() error {
 			count++
-			time.Sleep(2 * time.Second)
 			if count%2 != 0 {
 				return fmt.Errorf("error")
 			}
 			return nil
 		}
-
-		NewChain(Retry(2*time.Second, 4)).Run(job)
-		// each retry takes 4 seconds (retry timeout + sleep in job)
-		// we allow technically 3 retries to happen, although only 2 should happen.
-		time.Sleep(12 * time.Second)
+		NewChain(Retry(0, 4)).Run(job)
 
 		if got, want := count, 2; got != want {
 			t.Fatalf("want: %v got: %v\n", want, got)
@@ -100,10 +99,7 @@ func TestRetry(t *testing.T) {
 			count++
 			return fmt.Errorf("error")
 		}
-
 		NewChain(Retry(0, 4)).Run(job)
-		// give time for technically more then 4 retries.
-		time.Sleep(6 * time.Second)
 
 		if got, want := count, 4; got != want {
 			t.Fatalf("want: %v got: %v\n", want, got)
@@ -120,7 +116,6 @@ func TestRetry(t *testing.T) {
 				return fj()
 			}
 		}
-
 		incrementChain2 := func(fj FuncJob) FuncJob {
 			return func() error {
 				count++
@@ -128,13 +123,10 @@ func TestRetry(t *testing.T) {
 				return fj()
 			}
 		}
-
 		job := func() error {
 			return fmt.Errorf("error")
 		}
-
 		NewChain(Retry(0, 5), incrementChain, incrementChain2).Run(job)
-		time.Sleep(5 * time.Second)
 
 		if got, want := count, 15; got != want {
 			t.Fatalf("want: %v got: %v\n", want, got)
@@ -154,7 +146,6 @@ func TestMergeChains(t *testing.T) {
 			}
 		}
 	}(1)
-
 	chain2 := func(num int) func(job FuncJob) FuncJob {
 		return func(job FuncJob) FuncJob {
 			return func() error {
@@ -163,7 +154,6 @@ func TestMergeChains(t *testing.T) {
 			}
 		}
 	}(2)
-
 	chain3 := func(num int) func(job FuncJob) FuncJob {
 		return func(job FuncJob) FuncJob {
 			return func() error {
@@ -172,7 +162,6 @@ func TestMergeChains(t *testing.T) {
 			}
 		}
 	}(3)
-
 	chain4 := func(num int) func(job FuncJob) FuncJob {
 		return func(job FuncJob) FuncJob {
 			return func() error {
@@ -181,7 +170,6 @@ func TestMergeChains(t *testing.T) {
 			}
 		}
 	}(4)
-
 	job := func() error {
 		nums = append(nums, 5)
 		return nil
@@ -189,7 +177,6 @@ func TestMergeChains(t *testing.T) {
 
 	merge1 := NewChain(chain1, chain2)
 	merge2 := NewChain(chain3, chain4)
-
 	MergeChains(merge1, merge2).Run(job)
 
 	if got, want := nums, []int{1, 2, 3, 4, 5}; !reflect.DeepEqual(got, want) {
