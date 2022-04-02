@@ -139,19 +139,18 @@ func (l *linkedList) GetAll() (jobs []*Node) {
 
 // Clean removes the node (field) and re-calculates appropriate nodes.
 func (l *linkedList) Clean(now time.Time, nodes []*Node) {
-
 	for _, node := range nodes {
 		switch node.Schedule.(type) {
-		case *constantSchedule:
-			// remove nodes with constand schedule.
-			l.RemoveNode(node.Id)
-
-		default:
+		case CyclicSchedule:
 			// remove the ran node node.
 			l.RemoveNode(node.Id)
 
 			// then re-add the cyclic node.
 			l.AddNode(now, node)
+
+		case Schedule:
+			// remove nodes with constand schedule.
+			l.RemoveNode(node.Id)
 		}
 	}
 }
