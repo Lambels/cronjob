@@ -215,7 +215,6 @@ func (c *CronJob) addJob(job *Job, schedule Schedule, confs ...JobConf) int {
 	c.runningMu.Lock()
 	defer c.runningMu.Unlock()
 
-	c.idCount++
 	for _, conf := range confs {
 		conf(job)
 	}
@@ -230,10 +229,14 @@ func (c *CronJob) addJob(job *Job, schedule Schedule, confs ...JobConf) int {
 		if c.isRunning {
 			go job.Run()
 		} else {
+			c.idCount++
+
+			node.Id = c.idCount
 			c.scheduler.AddNode(c.Now(), node)
 		}
 	}
 
+	c.idCount++
 	node := &Node{
 		Id:       c.idCount,
 		Schedule: schedule,
