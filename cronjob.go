@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -104,7 +105,7 @@ func (c *CronJob) RemoveJob(id int) {
 	c.runningMu.Lock()
 	defer c.runningMu.Unlock()
 
-	if c.isRunning {
+	if !c.isRunning {
 		c.scheduler.RemoveNode(id)
 	} else {
 		c.remove <- id
@@ -151,7 +152,9 @@ func (c *CronJob) Stop() {
 func (c *CronJob) StopWithFlush() context.Context {
 	c.runningMu.Lock()
 	if !c.isRunning {
-		return context.Background()
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		return ctx
 	}
 
 	c.stop <- struct{}{}
@@ -159,26 +162,27 @@ func (c *CronJob) StopWithFlush() context.Context {
 	c.runningMu.Unlock()
 
 	// run jobs.
-	var wgJobs sync.WaitGroup
 	nodes := c.Jobs()
 
-	wgJobs.Add(len(nodes))
+	ctx, cancel := context.WithCancel(context.Background())
+	if len(nodes) == 0 { // no nodes.
+		cancel()
+		return ctx
+	}
+
+	var runningWorkerCount int32 = int32(len(nodes))
 	for _, node := range nodes {
 		go func(node *Node) {
 			node.Job.Run()
-			wgJobs.Done()
+			c := atomic.AddInt32(&runningWorkerCount, -1)
+			if c == 0 { // last job, cancel.
+				cancel()
+			}
 		}(node)
 	}
 
 	// clean nodes.
 	c.scheduler.Clean(c.Now(), nodes)
-
-	// wait for wait group to finish and cancel context.
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		wgJobs.Wait()
-		cancel()
-	}()
 
 	return ctx
 }
