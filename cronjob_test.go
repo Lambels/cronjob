@@ -137,7 +137,7 @@ func TestStopWithFlushWait(t *testing.T) {
 
 		select {
 		case <-ctx.Done():
-			// canceled imediately
+			// canceled immediately
 
 		case <-time.After(20 * time.Microsecond):
 			t.Fatal("ctx wasnt canceled.")
