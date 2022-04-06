@@ -170,11 +170,11 @@ func (c *CronJob) StopWithFlush() context.Context {
 		return ctx
 	}
 
-	var runningWorkerCount int32 = int32(len(nodes))
+	var runningWorkerCount int64 = int64(len(nodes))
 	for _, node := range nodes {
 		go func(node *Node) {
 			node.Job.Run()
-			c := atomic.AddInt32(&runningWorkerCount, -1)
+			c := atomic.AddInt64(&runningWorkerCount, -1)
 			if c == 0 { // last job, cancel.
 				cancel()
 			}
