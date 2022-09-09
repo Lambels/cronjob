@@ -47,22 +47,16 @@ func Retry(timeout time.Duration, max int) func(FuncJob) FuncJob {
 	return func(fj FuncJob) FuncJob {
 		// call chain from here.
 		err := fj()
-
 		if err != nil {
-
 			ticker := time.NewTicker(timeout)
+			defer ticker.Stop()
 
 			// use 1 to compensate for first error checking call.
 			for i := 1; i < max; i++ {
-				select {
-				case <-ticker.C:
-					if err := fj(); err == nil {
-						ticker.Stop()
-						break
-					}
-					continue
+				<-ticker.C
+				if err := fj(); err == nil {
+					break
 				}
-				break
 			}
 		}
 
