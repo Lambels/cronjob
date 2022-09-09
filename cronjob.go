@@ -93,6 +93,7 @@ func (c *CronJob) Now() time.Time {
 // can be called after starting the execution cycle or before.
 //
 //	(*CronJob).AddFunc(foo, cronjob.In(time.Now(), 4 * time.Hour))
+//
 // will schedule foo to run in 4 hours from time.Now()
 func (c *CronJob) AddFunc(cmd FuncJob, schedule Schedule, confs ...JobConf) int {
 	return c.addJob(&Job{job: cmd}, schedule, confs...)
@@ -152,6 +153,7 @@ func (c *CronJob) Stop() {
 func (c *CronJob) StopWithFlush() context.Context {
 	c.runningMu.Lock()
 	if !c.isRunning {
+		c.runningMu.Unlock()
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 		return ctx
